@@ -1,0 +1,10 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\users\\agaltsev\\yandexdisk\\компьютер sosimba\\programming\\с++20\\с++20\\helloworld.cppm",
+        "ProvidedModule": "helloworld",
+        "Includes": [],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

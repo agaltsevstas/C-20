@@ -1,0 +1,29 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Debug\\helloworld.cppm.obj",
+            "outputs": [
+                "C:\\Users\\Agaltsev\\YandexDisk\\Компьютер SOSIMBA\\Programming\\С++20\\С++20\\x64\\Debug\\vc143.pdb",
+                "x64\\Debug\\",
+                "C:\\Users\\Agaltsev\\YandexDisk\\Компьютер SOSIMBA\\Programming\\С++20\\С++20\\x64\\Debug\\helloworld.cppm.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "helloworld",
+                    "source-path": "c:\\users\\agaltsev\\yandexdisk\\компьютер sosimba\\programming\\с++20\\с++20\\helloworld.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": [
+                {
+                    "logical-name": "iostream",
+                    "source-path": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Tools\\MSVC\\14.37.32822\\include\\iostream",
+                    "lookup-method": "include-angle",
+                    "unique-on-source-path": true
+                }
+            ]
+        }
+    ]
+}

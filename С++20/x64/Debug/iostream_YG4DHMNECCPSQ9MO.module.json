@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Debug\\iostream_YG4DHMNECCPSQ9MO.obj",
+            "outputs": [
+                "C:\\Users\\Agaltsev\\YandexDisk\\Компьютер SOSIMBA\\Programming\\С++20\\С++20\\x64\\Debug\\vc143.pdb",
+                "x64\\Debug\\iostream_YG4DHMNECCPSQ9MO.module.json",
+                "x64\\Debug\\iostream_YG4DHMNECCPSQ9MO.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Tools\\MSVC\\14.37.32822\\include\\iostream",
+                    "source-path": "c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.37.32822\\include\\iostream",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": []
+        }
+    ]
+}
