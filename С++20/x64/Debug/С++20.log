@@ -1,4 +1,7 @@
 ﻿  Проверка источников на наличие зависимостей модуля…
+  helloworld.cppm
+  Компиляция…
+  helloworld.cppm
   С++20.cpp
-C:\Users\Agaltsev\YandexDisk\Компьютер SOSIMBA\Programming\С++20\С++20\С++20.cpp(579,32): warning C4305: инициализация: усечение из "double" в "float"
-  С++20.vcxproj -> C:\Users\Agaltsev\YandexDisk\Компьютер SOSIMBA\Programming\С++20\x64\Debug\С++20.exe
+C:\Users\Agaltsev\YandexDisk\Компьютер SOSIMBA\Programming\C++20\С++20\С++20.cpp(583,32): warning C4305: инициализация: усечение из "double" в "float"
+  С++20.vcxproj -> C:\Users\Agaltsev\YandexDisk\Компьютер SOSIMBA\Programming\C++20\x64\Debug\С++20.exe

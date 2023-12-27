@@ -1,14 +1,14 @@
 {
     "Version": "1.2",
     "Data": {
-        "Source": "c:\\users\\agaltsev\\yandexdisk\\компьютер sosimba\\programming\\с++20\\с++20\\helloworld.cppm",
+        "Source": "c:\\users\\agaltsev\\yandexdisk\\компьютер sosimba\\programming\\c++20\\с++20\\helloworld.cppm",
         "ProvidedModule": "helloworld",
         "Includes": [],
         "ImportedModules": [],
         "ImportedHeaderUnits": [
             {
                 "Header": "c:\\program files\\microsoft visual studio\\2022\\professional\\vc\\tools\\msvc\\14.37.32822\\include\\iostream",
-                "BMI": "C:\\Users\\Agaltsev\\YandexDisk\\Компьютер SOSIMBA\\Programming\\С++20\\С++20\\x64\\Debug\\iostream_YG4DHMNECCPSQ9MO.ifc"
+                "BMI": "C:\\Users\\Agaltsev\\YandexDisk\\Компьютер SOSIMBA\\Programming\\C++20\\С++20\\x64\\Debug\\iostream_YG4DHMNECCPSQ9MO.ifc"
             }
         ]
     }
