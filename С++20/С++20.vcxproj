@@ -131,6 +131,9 @@
     <ClCompile Include="helloworld.cppm" />
     <ClCompile Include="С++20.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Concept.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

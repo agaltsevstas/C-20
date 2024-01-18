@@ -1,11 +1,11 @@
 {
     "Version": "1.1",
     "Data": {
-        "Source": "c:\\users\\agaltsev\\yandexdisk\\компьютер sosimba\\programming\\c++20\\с++20\\helloworld.cppm",
+        "Source": "d:\\programming\\c++20\\с++20\\helloworld.cppm",
         "ProvidedModule": "helloworld",
         "ImportedModules": [],
         "ImportedHeaderUnits": [
-            "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Tools\\MSVC\\14.37.32822\\include\\iostream"
+            "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Tools\\MSVC\\14.38.33130\\include\\iostream"
         ]
     }
 }

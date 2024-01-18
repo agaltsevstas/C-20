@@ -1,10 +1,14 @@
-﻿#include <algorithm>
+#include "Concept.h"
+
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <bitset>
 #include <compare>
+#include <concepts>
 #include <chrono>
 #include <format>
+#include <list>
 #include <map>
 #include <numeric>
 #include <ranges>
@@ -12,10 +16,17 @@
 #include <source_location>
 #include <syncstream>
 #include <vector>
+#include <thread>
 #include <unordered_map>
 
 import <iostream>;
 import helloworld;
+
+/*
+ Сайты:
+ Концепты: https://habr.com/ru/companies/yandex_praktikum/articles/556816/
+           https://iamsorush.com/posts/concepts-cpp/
+ */
 
 /*
 * Главное отличие C++20 от C++17: библиотека ranges позволяет не использовать итераторы, а сразу же контейнеры. Например, сортировка по возрастанию
@@ -27,127 +38,225 @@ import helloworld;
 * Функция трехстороннего сравнения (независимо от того, используется она по умолчанию или нет) вызывается всякий раз, 
 * когда значения сравниваются с использованием <,>,<=,>=,==,!= или <=> и разрешение перегрузки выбирает эту перегрузку.
 */
-struct Point 
-{
-    int x;
-    int y;
-    /// Компилятор генерирует все шесть операторов двустороннего сравнения
-    auto operator<=>(const Point&) const = default; // сравнение по-умолчанию
-    //bool operator==(const Point&) const = default; // другой оператора по-умолчанию
 
-    // for std::equal_range
-    bool operator<(const Point& point) const { return x < point.x && y < point.y; }
-};
-
-struct CustomPoint
+namespace compare_three_way
 {
-    int x;
-    int y;
-    /// Компилятор генерирует все шесть операторов двустороннего сравнения
-    auto operator<=>(const Point& rhs) const
+    // 1 Способ: обычный
+    struct Point
     {
-        return std::tie(x, y) <=> std::tie(rhs.x, rhs.y);  // Перегруженное сравнение
-    }
-};
+        int x;
+        int y;
+        /// Компилятор генерирует все шесть операторов двустороннего сравнения
+        auto operator<=>(const Point&) const = default; // сравнение по-умолчанию
+        //bool operator==(const Point&) const = default; // другой оператора по-умолчанию
 
-const int sqrt(int n)
-{
-    return n * n;
+        // for std::equal_range
+        bool operator<(const Point& point) const { return x < point.x && y < point.y; }
+    };
+
+    // 2 Способ: через std::tie
+    struct CustomPoint
+    {
+        int x;
+        int y;
+        /// Компилятор генерирует все шесть операторов двустороннего сравнения
+        auto operator<=>(const Point& rhs) const
+        {
+            return std::tie(x, y) <=> std::tie(rhs.x, rhs.y);  // Перегруженное сравнение
+        }
+    };
 }
-
-constexpr int sqrt_1(int n)
-{
-    return n * n;
-}
-
-consteval int sqrt_2(int n)
-{
-    return n * n;
-}
-
-
-enum class Fruit
-{
-    Orange,
-    Apple
-};
-
-enum class Color 
-{ 
-    Red,
-    Orange
-};
 
 /*
-* constinit - статическая инициализация во время компиляции.
-* Отличие от static: переменная инициализируется во время компиляции, а не в runtime.
-* Отличие от constexpr: Если переменная является ссылкой, то constinit == constexpr. При выходе из стека constexpr уничтожается, в отличии от статической constinit, const constinit != constexpr
+ constinit - статическая переменная, которая инициализируется только во время компиляции, не может быть объявлена внутри функции, но может изменяться.
+ Отличие от static: переменная инициализируется только во время compile-time, а не в runtime.
+ Отличие от constexpr: Если переменная является ссылкой, то constinit == constexpr. При выходе из стека constexpr уничтожается, в отличии от статической constinit, const constinit != constexpr
+ consteval - функция, которые вычисляется только во время компиляции.
+ В отличие от constexpr: переменная инициализируется только во время compile-time, а не в runtime.
 */
-
-constinit const int global1 = 10;
-constinit int global2 = 0;
-//constinit constexpr int global3 = 0; // Ошибка: е может быть одновременно constexprи constinit
-//constinit int sqrt = sqrt(100); // Ошибка
-constinit int sqrt1 = sqrt_1(100);
-constinit int sqrt2 = sqrt_1(global1);
-constinit int sqrt3 = sqrt_2(100);
-constinit int sqrt4 = sqrt_2(global1);
-constinit int sqrt5 = (global1);
-
-template<typename T1, typename T2>
-struct Node
+namespace CONST
 {
-    T1 x;
-    T2 y;
- 
-    Node(T1 x, T2 y)
+    const int sqrt(int n)
     {
-        this->x = x;
-        this->y = y;
+        return n * n;
     }
- 
-    // Оператор сравнения требуется для сравнения ключей в случае коллизии хэшей
-    bool operator==(const Node &other) const
-    {
-        return x == other.x && y == other.y;
-    }
-};
- 
-// Хеш-функция для unordered_map
-struct hash
-{
-    template <class T1, class T2>
-    std::size_t operator() (const Node<T1, T2> &node) const
-    {
-        std::size_t h1 = std::hash<T1>()(node.x);
-        std::size_t h2 = std::hash<T2>()(node.y);
- 
-        return h1 ^ h2;
-    }
-};
 
-template<class T, std::size_t N, std::size_t M>
-constexpr bool EqualSpin(std::span<T, N> lhs, std::span<T, M> rhs)
-{
-    return lhs.size() == rhs.size() && std::equal(rhs.begin(), rhs.end(), lhs.begin());
+    constexpr int sqrt_1(int n)
+    {
+        return n * n;
+    }
+
+    consteval int sqrt_2(int n)
+    {
+        return n * n;
+    }
+
+    constinit const int global1 = 10;
+    constinit int global2 = 0;
+    //constinit constexpr int global3 = 0; // Ошибка: не может быть одновременно constexprи constinit
+    //constinit int sqrt = sqrt(100); // Ошибка
+    constinit int sqrt1 = sqrt_1(100);
+    constinit int sqrt2 = sqrt_1(global1);
+    constinit int sqrt3 = sqrt_2(100);
+    constinit int sqrt4 = sqrt_2(global1);
+    constinit int sqrt5 = (global1);
 }
 
-// auto - тип аргумента функции, вместо template
-void PrintContainer(const auto& container)
+/* Новая конструкция using enum - делает видимыми все константы из enum */
+namespace ENUM
 {
-    std::cout << "Container: ";
-    for (const auto& elem : container)
-        std::cout << elem << ', ';
-    std::cout << '\n';
+    enum class Fruit
+    {
+        Orange,
+        Apple
+    };
+
+    enum class Color
+    {
+        Red,
+        Orange
+    };
 }
 
-// auto - тип возвращаемой функции, вместо template
-auto TransformRanges(const std::vector<int>& iNumbers)
+/* Модификации для контейнеров std::unordered_map и std::unordered_set */
+namespace HASH
 {
-    auto condition = [](int i) { return i % 2 == 0; }; // Условие
-    auto operation = [](int i) { return i / 2; }; // Действие
+    template<typename T1, typename T2>
+    struct Node
+    {
+        T1 x;
+        T2 y;
+     
+        Node(T1 x, T2 y)
+        {
+            this->x = x;
+            this->y = y;
+        }
+     
+        // Оператор сравнения требуется для сравнения ключей в случае коллизии хэшей
+        bool operator==(const Node &other) const
+        {
+            return x == other.x && y == other.y;
+        }
+    };
+     
+    // Хеш-функция для unordered_map
+    struct hash
+    {
+        template <class T1, class T2>
+        std::size_t operator() (const Node<T1, T2> &node) const
+        {
+            std::size_t h1 = std::hash<T1>()(node.x);
+            std::size_t h2 = std::hash<T2>()(node.y);
+     
+            return h1 ^ h2;
+        }
+    };
+}
 
-    return iNumbers | std::views::filter(condition) | std::ranges::views::transform(operation);
+/*
+ std::span - обертка для контейнеров и массивов, только для std::vector<T>, и std::array<T> и обычных массивов. std::span - является ссылочным типом (не владеет объектом), поэтому память не выделяет и не освобождает.
+ Использовать только для разных типов контейнеров или массива + конейнер, иначе нет никакого смысла!!!
+ Методы:
+ size() - размер
+ empty() - возвращает true, если пуст
+ data() - указатель на элементы
+ front() - первый элемент
+ back() - последний элемент
+ */
+namespace SPAN
+{
+    // Проверка на эквивалентность контейнера и массива
+    template<class T, std::size_t N, std::size_t M>
+    constexpr bool EqualSpan(std::span<T, N> lhs, std::span<T, M> rhs)
+    {
+        return lhs.size() == rhs.size() && std::equal(rhs.begin(), rhs.end(), lhs.begin());
+    }
+}
+
+/*
+ Сокращенный шаблон (auto или Concept auto) - шаблонная функция, которая содержит auto в качестве типа аргумента или возвращающегося значения
+ Плюсы:
+ - упрощает синтаксис
+ - не нужно писать template
+ Минусы
+ - если забыть сделать return в функции, то функция станет void
+ - можно вернуть не тот тип
+ Решение: использовать концепты для точного возвращения нужного типа
+*/
+namespace AUTO
+{
+    // auto - тип аргумента функции, вместо template
+    void PrintContainer(const auto& container)
+    {
+        std::cout << "Container: ";
+        for (const auto& elem : container)
+            std::cout << elem << ", ";
+        std::cout << '\n';
+    }
+
+    // auto - тип возвращаемой функции, вместо template
+    auto TransformRanges(const std::vector<int>& iNumbers)
+    {
+        auto condition = [](int i) { return i % 2 == 0; }; // Условие
+        auto operation = [](int i) { return i / 2; }; // Действие
+
+        return iNumbers | std::views::filter(condition) | std::ranges::views::transform(operation);
+    }
+
+    inline constexpr auto GetSum(const auto& value1, const auto& value2)
+    {
+        return value1 + value2;
+    }
+
+    // Унарная правоассоциативная свёртка
+    inline constexpr auto Sum(auto&&... args)
+    {
+        return (args + ...); // (arg1+ arg2 + arg3 + ...)
+    }
+
+    // Унарная правоассоциативная свёртка
+    inline constexpr auto Average(auto&&... args) // Сокращенный шаблон
+    {
+        auto s = Sum(args...);
+        return s / sizeof...(args);
+    }
+
+    namespace CONCEPT
+    {
+        inline constexpr void Print_Strings(std::convertible_to<std::string_view> auto&& ...strings) // Сокращенный шаблон
+        {
+            for (const auto& s : std::initializer_list<std::string_view>{ std::forward<std::string_view>(strings)... })
+                std::cout << s << ", ";
+            std::cout << std::endl;
+        }
+
+        inline constexpr void Print(const std::ranges::common_range auto& container)
+        {
+            for (const auto& item : container)
+                std::cout << item << ", ";
+            std::cout << std::endl;
+        }
+    }
+}
+
+// Lambda можно передавать шаблоны только при аргументах
+namespace LAMBDA
+{
+    template <typename T>
+    struct Test
+    {
+        T value;
+    };
+
+    void MyFunction(int&& number)
+    {
+         std::cout << "rvalue: " << number << std::endl;
+    }
+    void MyFunction(int& number)
+    {
+        std::cout << "lvalue: " << number << std::endl;
+    }
 }
 
 
@@ -156,42 +265,84 @@ int main()
     setlocale(LC_ALL, "Russian"); // Нужно сохранить файл с кодировкой Кириллица (Windows) - кодовая страница 1251
     /* Расширение файлов .cppm для модулей */
     {
-        hello();
+         hello();
     }
-    /* constexpr - функции, которые вычисляется исключительно во время компиляции.
-       В отличие от constexpr, которые могут вызываться как в run-time и compile-time, consteval вызываются только в compile-time.
+    /*
+     constinit - статическая переменная, которая инициализируется только во время компиляции, не может быть объявлена внутри функции, но может изменяться.
+     Отличие от static: переменная инициализируется только во время compile-time, а не в runtime.
+     Отличие от constexpr: Если переменная является ссылкой, то constinit == constexpr. При выходе из стека constexpr уничтожается, в отличии от статической constinit, const constinit != constexpr
+     consteval - функция, которые вычисляется только во время компиляции.
+     В отличие от constexpr: переменная инициализируется только во время compile-time, а не в runtime.
     */
     {
-        int number = 100;
+        using namespace CONST;
+        /* consteval */
+        {
+            int number = 100;
 
-        // constexpr
-        {
-            constexpr int sqrt1 = sqrt_1(100); // Функция будет вызвана при выполении кода (runtime)
-            //constexpr int sqrt2 = sqrt_1(number); // Функция НЕ будет вызвана на этапе компиляции
-            int sqrt3 = sqrt_1(number); // Функция будет вызвана на этапе компиляции
+            // constexpr
+            {
+                constexpr int sqrt1 = sqrt_1(100); // Функция будет вызвана при выполении кода (runtime)
+                // constexpr int sqrt2 = sqrt_1(number); // Функция НЕ будет вызвана на этапе компиляции
+                int sqrt3 = sqrt_1(number); // Функция будет вызвана на этапе компиляции
+            }
+            // consteval
+            {
+                constexpr int sqrt1 = sqrt_2(100); // Функция будет вызвана при выполении кода (runtime)
+                // constexpr int sqrt2 = sqrt_2(number); // Функция НЕ будет вызвана на этапе компиляции
+                // int sqrt3 = sqrt_2(number); // Функция НЕ будет вызвана на этапе компиляции
+            }
         }
-        // consteval
+        /* constinit */
         {
-            constexpr int sqrt1 = sqrt_2(100); // Функция будет вызвана при выполении кода (runtime)
-            //constexpr int sqrt2 = sqrt_2(number); // Функция НЕ будет вызвана на этапе компиляции
-            //int sqrt3 = sqrt_2(number); // Функция НЕ будет вызвана на этапе компиляции
+            //constinit int error = 0; // Ошибка: может использоваться только для объявлений переменных со сроком хранения в статическом или потоковом хранилище
+            global2 = 10;
         }
-    }
-    /* constinit - переменная не может быть объявлена внутри функции, но может изменяться */
-    {
-        //constinit int error = 0; // Ошибка: может использоваться только для объявлений переменных со сроком хранения в статическом или потоковом хранилище
-        global2 = 10;
     }
     /* Lambda */
     {
+        using namespace LAMBDA;
         // Lambda можно передавать шаблоны только при аргументах
         {
-            auto lambda = []<class T>(T x, T y)
+            int number = 10;
+            
+            // До C++20
             {
-                return x * y - x - y;
+                auto Lambda = [&](auto&& number) // Сокращенный шаблон (auto)
+                {
+                    MyFunction(std::forward<decltype(number)>(number));
+                };
+                
+                Lambda(10);
+                Lambda(number);
+            }
+            // C++20
+            {
+                auto Lambda = []<typename T>(T&& number)
+                {
+                     MyFunction(std::forward<T>(number));
+                };
+                
+                Lambda(10);
+                Lambda(number);
+            }
+            
+            // Переменным число параметров (variadic template)
+            auto Sum = []<typename... TArgs>(TArgs&&... args)
+            {
+                return (... + args);
             };
-
-            lambda(10, 12);
+            
+            auto sum = Sum(10, 11, 12);
+            
+            // Сокращенный шаблон (auto)
+            auto Average = [&Sum](auto&&... args)
+            {
+                auto s =  Sum(args...);
+                return s / sizeof...(args);
+            };
+            
+            auto average = Average(10, 11, 12);
         }
 
         // Lambda можно копировать и создать значение этого типа
@@ -207,26 +358,54 @@ int main()
             auto result1 = sqrt1(1);
             auto result2 = sqrt2(10);
         }
+        
+        // Lambda в качестве параметра шаблона, могут быть constexpr с C++20 по-умолчанию
+        {
+            // Lambda без сосятояния: лямбда превращается в обычный указатель на функцию
+            {
+                LAMBDA::Test<decltype([]()->void { })> test1;
+                decltype(test1.value) value; // unnamed class
+                LAMBDA::Test<decltype([]()->int { return 10; })> test2;
+            }
+            // Lambda имеет состояние
+            {
+                auto lambda = [](auto&& value) -> auto
+                {
+                    return value;
+                };
+                
+                LAMBDA::Test<decltype(lambda(std::string("str")))> test3; // string
+                LAMBDA::Test<decltype(lambda(10))> test4; // int
+                LAMBDA::Test<decltype(lambda(10.0))> test5; // double
+            }
+        }
     }
     /* Новый синтаксис for + библиотека <ranges> */
     {
-        // Инкрементирование C++20 в 2 раза медленее, чем обычное инкрементирование, поэтому C++20 можно использовать с Time: O(1), где константа < 1.000.000 итераций. 
-        // На хабре утвержается, что они равны по скорости.
+        /*
+         Инкрементирование C++20 в 2 раза медленее, чем обычное инкрементирование, поэтому C++20 можно использовать с Time: O(1), где константа < 1.000.000 итераций.
+         На хабре утвержается, что они равны по скорости.
+         */
         {
-            // Инкрементирование с константой, которая заранее известна, Time: O(1)
+            // 1 Способ: iota - Инкрементирование с константой, которая заранее известна, Time: O(1)
             {
                 for (const auto i : std::views::iota(0, 10))
                 {
 
                 }
             }
-            // Инкрементирование с n, которая заранее НЕ известна, Time: O(n).
+            // 1 Способ: iota - Инкрементирование с n, которая заранее НЕ известна, Time: O(n).
             {
                 constexpr int n = 1000000;
                 for (const auto i : std::views::iota(0, n)) // лучше использовать стандартный цикл, при n >= 1.000.000 итераций
                 {
 
                 }
+            }
+            // 2 Способ: iota + take
+            for (int i : std::views::iota(0) | std::views::take(10))
+            {
+                
             }
         }
         // Цикл по диапазону
@@ -267,8 +446,10 @@ int main()
                     std::cout << std::endl;
                 }
             }
-            // Адаптеры: filter - фильтрует нечётные числа, transform - делит на два. Результат - контейнер с новыми числами.
-            // На хабре утвержается, что filter + transform быстрее обычного transform в 1,5 раза.
+            /*
+             Адаптеры: filter - фильтрует нечётные числа, transform - делит на два. Результат - контейнер с новыми числами.
+             На хабре утвержается, что filter + transform быстрее обычного transform в 1,5 раза.
+             */
             {
                 // 1 Способ
                 {
@@ -285,7 +466,7 @@ int main()
                 // 2 Способ
                 {
                     std::cout << "2 Способ, четные числа, деленые на 2" << std::endl;
-                    for (auto i : TransformRanges(numbers))
+                    for (auto i : AUTO::TransformRanges(numbers))
                         std::cout << i << ", ";
                     std::cout << std::endl;
                 }
@@ -371,6 +552,8 @@ int main()
     }
     /* Новая конструкция using enum - делает видимыми все константы из enum */
     {
+        using namespace ENUM;
+        
         using enum Fruit;
         Orange;
         Apple;
@@ -402,11 +585,11 @@ int main()
     }
     /* Библиотека format */
     {
-        auto s1 = std::format("The answer is {}.", 42); // "The answer is 42."
-        auto s2 = std::format("{1} from {0}", "Russia", "Hello"); // "Hello from Russia"
-        constexpr int width = 10;
-        constexpr int precision = 3;
-        auto s3 = std::format("{0:{1}.{2}f}", 12.345678, width, precision); // "    12.346"
+         auto s1 = std::format("The answer is {}.", 42); // "The answer is 42."
+         auto s2 = std::format("{1} from {0}", "Russia", "Hello"); // "Hello from Russia"
+         constexpr int width = 10;
+         constexpr int precision = 3;
+         auto s3 = std::format("{0:{1}.{2}f}", 12.345678, width, precision); // "    12.346"
     }
     /* shift_left и shift_rihgt - сдвигают все элементы диапазона на заданное число позиций.
        Элементы, уходящие на край, не переносятся в другой конец, а уничтожаются. */
@@ -448,6 +631,7 @@ int main()
     }
     /* Модификации для контейнеров std::unordered_map и std::unordered_set */
     {
+        using namespace HASH;
         // Операции сравнения
         std::unordered_map<Node<std::string, std::string>, int, hash> nodeMap =
         {
@@ -461,14 +645,15 @@ int main()
 
         auto is_contain = nodeMap.contains({ "C++", "C++14" }); // contains - проверяет наличие ключа, аналог метода count
     }
-    /* std::span - обертка для контейнеров и массивов, только для std::vector<T>, и std::array<T> и обычных массивов. std::span - является ссылочным типом (не владеет объектом), поэтому память не выделяет и не освобождает.
-    * Использовать только для разных типов контейнеров или массива + конейнер, иначе нет никакого смысла!!!
-    * Методы:
-    * size() - размер
-    * empty() - возвращает true, если пуст
-    * data() - указатель на элементы
-    * front() - первый элемент
-    * back() - последний элемент
+    /*
+     std::span - обертка для контейнеров и массивов, только для std::vector<T>, и std::array<T> и обычных массивов. std::span - является ссылочным типом (не владеет объектом), поэтому память не выделяет и не освобождает.
+     Использовать только для разных типов контейнеров или массива + конейнер, иначе нет никакого смысла!!!
+     Методы:
+     size() - размер
+     empty() - возвращает true, если пуст
+     data() - указатель на элементы
+     front() - первый элемент
+     back() - последний элемент
     */
     {
         // Общий тип - int
@@ -563,6 +748,7 @@ int main()
 
         // Проверка на эквивалентность контейнера и массива
         {
+            using namespace SPAN;
             //constexpr std::vector numbers_vec{ 1, 2, 3, 4, 5 }; // Почему-то не работает в С++20
 
             constexpr std::array numbers_array1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
@@ -570,17 +756,47 @@ int main()
 
             auto subspan1 = std::span(numbers_array1).subspan(4, 6); // 5, 6, 7, 8, 9, 10
             auto subspan2 = std::span(numbers_array2).subspan(0, 6); // 5, 6, 7, 8, 9, 10
-            PrintContainer(subspan1);
-            PrintContainer(subspan2);
+            AUTO::PrintContainer(subspan1);
+            AUTO::PrintContainer(subspan2);
 
-            auto is_equal = EqualSpin(subspan1, subspan2);
+            auto is_equal = EqualSpan(subspan1, subspan2);
+        }
+    }
+    /*
+     Сокращенный шаблон (auto или Concept auto) - шаблонная функция, которая содержит auto в качестве типа аргумента или возвращающегося значения
+     Плюсы:
+     - упрощает синтаксис
+     - не нужно писать template
+     Минусы
+     - если забыть сделать return в функции, то функция станет void
+     - можно вернуть не тот тип
+     Решение: использовать концепты для точного возвращения нужного типа
+    */
+    {
+        auto sum1 = AUTO::GetSum(1, 2);
+        auto sum2 = AUTO::GetSum(1, 2.f);
+        auto sum3 = AUTO::Sum(1, 2);
+        auto sum4 = AUTO::Sum(1, 2.f);
+
+        // Concept
+        {
+            std::vector<int> points { 1, 2, 3, 4, 5 };
+            CONCEPT::Point point;
+
+            AUTO::CONCEPT::Print_Strings("one", std::string{ "two" });
+            AUTO::CONCEPT::Print(points);
+            
+            // auto resultReturn = CONCEPT::AUTO::NothingReturn(); // Ошибка NothingReturn ничего не возвращает
+            CONCEPT::AUTO::DrawShape(point);
+            auto shape1 = CONCEPT::AUTO::GetShape1(); // C++20, 1 Способ: точно возвращается значение и нужный тип
+            auto shape2 = CONCEPT::AUTO::GetShape2(); // C++20, 2 Способ: точно возвращается значение и нужный тип
         }
     }
     /* Бибилиотека <bit> */
     {
         // std::bit_cast - перевод из одного типа в другой, замена reinterpret_cast
         {
-            float number_float = 1.2;
+            float number_float = 1.2f;
             int number_int = std::bit_cast<int>(number_float);
         }
         // std::bit_width - двоичный логарифм
@@ -649,8 +865,10 @@ int main()
         else
             std::cout << "mixed-endian" << std::endl;
     }
-    /* Функция трехстороннего сравнения */
+    /* Функция трехстороннего сравнения (std::compare_three_way) */
     {
+        using namespace compare_three_way;
+        
         Point point1{ 1, 1 }, point2{ 1, 2 };
         std::set<Point> points;
         points.insert(point1);
@@ -665,7 +883,7 @@ int main()
         auto compar1 = point1 <=> point2;
         auto compare2 = std::compare_three_way{}(point1, point2);
     }
-    /* Нововведения в ногопоточности */
+    /* Нововведения в многопоточности */
     {
         /* osyncstream - вывод в разных потоках */
         {
@@ -713,7 +931,7 @@ int main()
                     {
                         for (int i = 0; i < 10; ++i)
                         {
-                            std::osyncstream(std::cout) << "John has " << i << " apples" << std::endl;
+                             std::osyncstream(std::cout) << "John has " << i << " apples" << std::endl;
                         }
                     };
 
@@ -721,7 +939,7 @@ int main()
                     {
                         for (int i = 0; i < 10; ++i)
                         {
-                            std::osyncstream(std::cout) << "Marry has " << i * 100 << " puncakes" << std::endl;
+                             std::osyncstream(std::cout) << "Marry has " << i * 100 << " puncakes" << std::endl;
                         }
                     };
 
@@ -789,6 +1007,110 @@ int main()
             };
 
             log("C++20");
+        }
+    }
+    /*
+     Концепт (concept) - это имя для ограничения, которое используется вместо слов class или typename в конструкции с template.
+     Ограничение — это шаблонное булево выражение. Концепты улучшают читаемость кода и облегчает поиск ошибок. Концепции можно использовать для перегрузки функций, специализации шаблонов и создания метафункций. Концепты компилируются быстрее обычного SFINAE (std::enable_if и constexpr) и условия в них можно расширять.
+     Версия C++20 вернулась обратно к двум функциям, но теперь код намного читабельнее, чем с std::enable_if.
+     requires - пользовательское ограничение
+    */
+    {
+        using namespace CONCEPT;
+        Point point;
+        DerivedPoint derivedPoint;
+        NoDerivedPoint noderivedPoint;
+        std::vector<Point> points = { { 2, 1 }, { 2, 2 }, { 1, 1 }, { 1, 2 } };
+        
+        // common
+        {
+            common::Print(points);
+            common::Print(0u);
+            common::Print(0);
+            common::Print(0.f);
+            common::Print(1u);
+            common::Print(1.f);
+            common::Print(-1);
+            common::Print(-1.f);
+            common::Print(1.1);
+            common::Print(-1.1);
+            
+            common::ConvertTo(1, 1); // int to int
+            common::ConvertTo(1.f, 1); // float to int
+            common::ConvertTo(double(1.0), 1); // double to int
+            common::ConvertTo('1', 1); // char to int
+            // common::ConvertTo(std::string("str"), 1); // Нельзя сконвертировать int в std::string
+            
+            common::Is_Base_Point(derivedPoint); // std::is_base_of(Point, DerivedPoint) == true
+            // common::Is_Base_Point(noderivedPoint); // std::is_base_of(Point, DerivedPoint) == false
+            
+            int number1 = 1;
+            double number2 = 1.0;
+            std::string str = "str";
+            
+            auto pointer1 = common::variadic::constructArgs<NoDerivedPoint>(); // nullptr почему-то для конструктора default
+            auto pointer2 = common::variadic::constructArgs<NoDerivedPoint>(number1, number2, str);
+            auto pointer3 = common::variadic::constructArgs<NoDerivedPoint>(1, 1.0, "str");
+            auto pointer4 = common::variadic::constructArgs<NoDerivedPoint>(1); // nullptr
+            auto pointer5 = common::variadic::constructArgs<NoDerivedPoint>(1.0); // nullptr
+            auto pointer6 = common::variadic::constructArgs<NoDerivedPoint>("str"); // nullptr
+            
+            common::variadic::Print_Numeric((int)1, (double)2.0, (float)3.0);
+            // auto abs3 = common::abs((float)1.0); // Ошибка: не указан тип float
+            
+            auto allArithmetic1 = common::variadic::Has_All_Arithmetic(5, true, 5.5, false); // false
+            auto allArithmetic2 = common::variadic::Has_All_Arithmetic(5, 5.5); // true
+            auto anyArithmetic1 = common::variadic::Has_Any_Arithmetic(5, true, 5.5, false); // true
+            auto anyArithmetic2 = common::variadic::Has_Any_Arithmetic(true, false); // true
+            auto noneArithmetic1 = common::variadic::Has_None_Arithmetic(5, true, 5.5, false); // false
+            auto noneArithmetic2 = common::variadic::Has_None_Arithmetic(5, 5.5); // false
+            auto noneArithmetic3 = common::variadic::Has_None_Arithmetic(true, false); // false
+        }
+        // custom
+        {
+            auto operation1 = custom::concepts::Operation<int>;  // true
+            auto operation2 = custom::concepts::Operation<char>; // true
+            auto operation3 = custom::concepts::Operation<std::string>; // false
+            auto operation4 = custom::concepts::Operation<Point>; // false
+            
+            custom::Sort(points.begin(), points.end());
+            custom::Print(points);
+            custom::Print(1.1);
+        }
+        /*
+         Сокращенный шаблон (auto или Concept auto) - шаблонная функция, которая содержит auto в качестве типа аргумента или возвращающегося значения
+         Плюсы:
+         - упрощает синтаксис
+         - не нужно писать template
+         Минусы
+         - если забыть сделать return в функции, то функция станет void
+         - можно вернуть не тот тип
+         Решение: использовать концепты для точного возвращения нужного типа
+         */
+        {
+            // auto resultReturn = CONCEPT::AUTO::NothingReturn(); // Ошибка NothingReturn ничего не возвращает
+            CONCEPT::AUTO::DrawShape(point);
+            auto shape1 = CONCEPT::AUTO::GetShape1();
+            auto shape2 = CONCEPT::AUTO::GetShape2();
+            
+            auto abs1 = CONCEPT::AUTO::ABS((int)1);
+            auto abs2 = CONCEPT::AUTO::ABS((double)1.0);
+            
+            auto size1 = CONCEPT::AUTO::GetSize(points);
+            auto size2 = CONCEPT::AUTO::GetSize(1.0);
+            
+            CONCEPT::AUTO::Print(1.1);
+            
+        }
+        // metafunction
+        {
+            std::array<Point, 1> pointsArray = {points.front()};
+            std::list<Point> pointsList(points.begin(), points.end());
+            
+            std::cout<< metafunction::Info<decltype(points)>::type << std::endl;
+            std::cout<< metafunction::Info<decltype(pointsArray)>::type << std::endl;
+            std::cout<< metafunction::Info<decltype(pointsList)>::type << std::endl;
+            std::cout<< metafunction::Info<decltype(point)>::type << std::endl;
         }
     }
 

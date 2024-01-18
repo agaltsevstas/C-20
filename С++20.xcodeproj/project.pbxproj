@@ -26,6 +26,7 @@
 		8076FB822B2356D10067767B /* С++20 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "С++20"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8076FB8C2B23572E0067767B /* С++20.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "С++20.cpp"; sourceTree = "<group>"; };
 		8076FB8E2B2357450067767B /* helloworld.cppm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = helloworld.cppm; path = "С++20/helloworld.cppm"; sourceTree = "<group>"; };
+		80CBEEE22B52990200467FD5 /* Concept.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Concept.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				8076FB8C2B23572E0067767B /* С++20.cpp */,
+				80CBEEE22B52990200467FD5 /* Concept.h */,
 			);
 			path = "С++20";
 			sourceTree = "<group>";
