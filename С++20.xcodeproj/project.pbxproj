@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8076FB8D2B23572E0067767B /* С++20.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8076FB8C2B23572E0067767B /* С++20.cpp */; };
+		80EC04AB2B78DD660039AA2A /* С++20.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 80EC04AA2B78DD660039AA2A /* С++20.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,9 +24,9 @@
 
 /* Begin PBXFileReference section */
 		8076FB822B2356D10067767B /* С++20 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "С++20"; sourceTree = BUILT_PRODUCTS_DIR; };
-		8076FB8C2B23572E0067767B /* С++20.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "С++20.cpp"; sourceTree = "<group>"; };
-		8076FB8E2B2357450067767B /* helloworld.cppm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = helloworld.cppm; path = "С++20/helloworld.cppm"; sourceTree = "<group>"; };
-		80CBEEE22B52990200467FD5 /* Concept.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Concept.h; sourceTree = "<group>"; };
+		80EC04A82B78DD660039AA2A /* helloworld.cppm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = helloworld.cppm; path = "C++20/helloworld.cppm"; sourceTree = "<group>"; };
+		80EC04A92B78DD660039AA2A /* Concept.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Concept.h; path = "C++20/Concept.h"; sourceTree = "<group>"; };
+		80EC04AA2B78DD660039AA2A /* С++20.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "С++20.cpp"; path = "C++20/С++20.cpp"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,8 +43,9 @@
 		8076FB792B2356D10067767B = {
 			isa = PBXGroup;
 			children = (
-				8076FB8E2B2357450067767B /* helloworld.cppm */,
-				8076FB842B2356D10067767B /* С++20 */,
+				80EC04AA2B78DD660039AA2A /* С++20.cpp */,
+				80EC04A92B78DD660039AA2A /* Concept.h */,
+				80EC04A82B78DD660039AA2A /* helloworld.cppm */,
 				8076FB832B2356D10067767B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -55,15 +56,6 @@
 				8076FB822B2356D10067767B /* С++20 */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		8076FB842B2356D10067767B /* С++20 */ = {
-			isa = PBXGroup;
-			children = (
-				8076FB8C2B23572E0067767B /* С++20.cpp */,
-				80CBEEE22B52990200467FD5 /* Concept.h */,
-			);
-			path = "С++20";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -123,7 +115,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8076FB8D2B23572E0067767B /* С++20.cpp in Sources */,
+				80EC04AB2B78DD660039AA2A /* С++20.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -242,7 +234,7 @@
 		8076FB8A2B2356D10067767B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++23";
 				CODE_SIGN_STYLE = Automatic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -251,7 +243,7 @@
 		8076FB8B2B2356D10067767B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++23";
 				CODE_SIGN_STYLE = Automatic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

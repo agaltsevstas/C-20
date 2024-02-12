@@ -10,17 +10,23 @@
 #include <format>
 #include <list>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <ranges>
 #include <set>
-//#include <source_location>
-//#include <syncstream>
 #include <vector>
 #include <thread>
 #include <unordered_map>
+#include <utility>
+#include <source_location>
 
-//import <iostream>;
-//import helloworld;
+#if defined(_MSC_VER) || defined(_MSC_FULL_VER) || defined(_WIN32) || defined(_WIN64)
+    #include <syncstream>
+
+    import <iostream>;
+    import helloworld;
+#endif
+
 
 /*
  Сайты:
@@ -263,10 +269,12 @@ namespace LAMBDA
 int main()
 {
     setlocale(LC_ALL, "Russian"); // Нужно сохранить файл с кодировкой Кириллица (Windows) - кодовая страница 1251
+#if defined(_MSC_VER) || defined(_MSC_FULL_VER) || defined(_WIN32) || defined(_WIN64)
     /* Расширение файлов .cppm для модулей */
     {
-//         hello();
+         hello();
     }
+#endif
     /*
      constinit - статическая переменная, которая инициализируется только во время компиляции, не может быть объявлена внутри функции, но может изменяться.
      Отличие от static: переменная инициализируется только во время compile-time, а не в runtime.
@@ -441,7 +449,7 @@ int main()
                 // 3 Способ
                 {
                     std::cout << "reverse numbers: ";
-                    for (const auto& number : std::views::reverse(numbers))
+                    for (const auto& number : std::ranges::views::reverse(numbers))
                         std::cout << number << " ";
                     std::cout << std::endl;
                 }
@@ -651,14 +659,16 @@ int main()
         using namespace std::chrono;
         auto is_year_2021 = (year_2021 == std::chrono::year_month_day(2021y, std::chrono::month(std::chrono::January), 23d));
     }
+#if defined(_MSC_VER) || defined(_MSC_FULL_VER) || defined(_WIN32) || defined(_WIN64)
     /* Библиотека format */
     {
-//         auto s1 = std::format("The answer is {}.", 42); // "The answer is 42."
-//         auto s2 = std::format("{1} from {0}", "Russia", "Hello"); // "Hello from Russia"
-//         constexpr int width = 10;
-//         constexpr int precision = 3;
-//         auto s3 = std::format("{0:{1}.{2}f}", 12.345678, width, precision); // "    12.346"
+         auto s1 = std::format("The answer is {}.", 42); // "The answer is 42."
+         auto s2 = std::format("{1} from {0}", "Russia", "Hello"); // "Hello from Russia"
+         constexpr int width = 10;
+         constexpr int precision = 3;
+         auto s3 = std::format("{0:{1}.{2}f}", 12.345678, width, precision); // "    12.346"
     }
+#endif
     /* shift_left и shift_rihgt - сдвигают все элементы диапазона на заданное число позиций.
        Элементы, уходящие на край, не переносятся в другой конец, а уничтожаются. */
     {
@@ -952,6 +962,7 @@ int main()
         auto compar1 = point1 <=> point2;
         auto compare2 = std::compare_three_way{}(point1, point2);
     }
+#if defined(_MSC_VER) || defined(_MSC_FULL_VER) || defined(_WIN32) || defined(_WIN64)
     /* Нововведения в многопоточности */
     {
         /* osyncstream - вывод в разных потоках */
@@ -1000,7 +1011,7 @@ int main()
                     {
                         for (int i = 0; i < 10; ++i)
                         {
-//                             std::osyncstream(std::cout) << "John has " << i << " apples" << std::endl;
+                             std::osyncstream(std::cout) << "John has " << i << " apples" << std::endl;
                         }
                     };
 
@@ -1008,7 +1019,7 @@ int main()
                     {
                         for (int i = 0; i < 10; ++i)
                         {
-//                             std::osyncstream(std::cout) << "Marry has " << i * 100 << " puncakes" << std::endl;
+                             std::osyncstream(std::cout) << "Marry has " << i * 100 << " puncakes" << std::endl;
                         }
                     };
 
@@ -1039,7 +1050,8 @@ int main()
             // TODO: разобраться
         }
     }
-    /* std::source_location - представляет определенную информацию об исходном коде 
+#endif
+    /* std::source_location - представляет определенную информацию об исходном коде
     * Методы:
     * current() - объект, который указывает исходное местоположение, где он вызывается в программе
     * file_name() - имя файла
@@ -1065,17 +1077,17 @@ int main()
 
         // C++20
         {
-//            auto log = [](const std::string& message, const std::source_location& location = std::source_location::current())
-//            {
-//                std::clog << "file: "                          // Аналог буферизированного cerr
-//                          << location.file_name() << '('       // Имя файла
-//                          << location.line() << ':'            // Номер строки в исходном файле
-//                          << location.column() << ") `"        // Номер колонки в исходном коде
-//                          << location.function_name() << "`: " // Имя функции, в которой находимся
-//                          << message << std::endl;
-//            };
+            auto log = [](const std::string& message, const std::source_location& location = std::source_location::current())
+            {
+                std::clog << "file: "                          // Аналог буферизированного cerr
+                          << location.file_name() << '('       // Имя файла
+                          << location.line() << ':'            // Номер строки в исходном файле
+                          << location.column() << ") `"        // Номер колонки в исходном коде
+                          << location.function_name() << "`: " // Имя функции, в которой находимся
+                          << message << std::endl;
+            };
 
-//            log("C++20");
+            log("C++20");
         }
     }
     /*
