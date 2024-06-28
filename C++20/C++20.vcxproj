@@ -19,11 +19,17 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Concept.h" />
+    <ClCompile Include="Coroutine.cpp" />
+    <ClCompile Include="helloworld.cppm" />
+    <ClCompile Include="Latch_Barrier.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Semaphore.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="helloworld.cppm" />
-    <ClCompile Include="С++20.cpp" />
+    <ClInclude Include="Concept.h" />
+    <ClInclude Include="Coroutine.hpp" />
+    <ClInclude Include="Latch_Barrier.hpp" />
+    <ClInclude Include="Semaphore.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

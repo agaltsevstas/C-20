@@ -1,4 +1,7 @@
 #include "Concept.h"
+#include "Coroutine.hpp"
+#include "Latch_Barrier.hpp"
+#include "Semaphore.hpp"
 
 #include <algorithm>
 #include <array>
@@ -29,22 +32,18 @@
 
 
 /*
+ Лекция: https://www.youtube.com/watch?v=DOnXa13ipVw&t=4999s
  Сайты:
  Концепты: https://habr.com/ru/companies/yandex_praktikum/articles/556816/
            https://iamsorush.com/posts/concepts-cpp/
  */
 
 /*
-* Главное отличие C++20 от C++17: библиотека ranges позволяет не использовать итераторы, а сразу же контейнеры. Например, сортировка по возрастанию
-* C++17: std::sort(numbers.begin(), numbers.end(), std::greater<>());
-* C++20: std::ranges::sort(numbers, std::ranges::greater());
+ Оператор трехстороннего сравнения (spaceship) (<=> / std::compare_three_way) - является неявным constexpr-оператором сравнения, который можно в классе/структуре задать вручную или компилятор сам сгенерирует по умолчанию, указав ключевое слово default. В итоге компилятор генерирует код для шести вариантов сравнения (<,>,<=,>=,==,!=). Для обычных типов (int, double, float) оператор трехстороннего сравнения также будет работать, он будет вызываться всякий раз, когда значения сравниваются с использованием одного из шести операторов сравнения или <=> и с помощью разрешения перегрузки выбирается нужное сравнение.
+     Пример:
+     1) a <=> b
+     2) std::compare_three_way{}(a, b)
 */
-
-/*
-* Функция трехстороннего сравнения (независимо от того, используется она по умолчанию или нет) вызывается всякий раз, 
-* когда значения сравниваются с использованием <,>,<=,>=,==,!= или <=> и разрешение перегрузки выбирает эту перегрузку.
-*/
-
 namespace compare_three_way
 {
     // 1 Способ: обычный
@@ -53,11 +52,11 @@ namespace compare_three_way
         int x;
         int y;
         /// Компилятор генерирует все шесть операторов двустороннего сравнения
-        auto operator<=>(const Point&) const = default; // сравнение по-умолчанию
+        auto operator<=>(const Point&) const noexcept = default; // сравнение по-умолчанию
         //bool operator==(const Point&) const = default; // другой оператора по-умолчанию
 
         // for std::equal_range
-        bool operator<(const Point& point) const { return x < point.x && y < point.y; }
+        bool operator<(const Point& point) const noexcept { return x < point.x && y < point.y; }
     };
 
     // 2 Способ: через std::tie
@@ -78,7 +77,7 @@ namespace compare_three_way
  Отличие от static: переменная инициализируется только во время compile-time, а не в runtime.
  Отличие от constexpr: Если переменная является ссылкой, то constinit == constexpr. При выходе из стека constexpr уничтожается, в отличии от статической constinit, const constinit != constexpr
  consteval - функция, которые вычисляется только во время компиляции.
- В отличие от constexpr: переменная инициализируется только во время compile-time, а не в runtime.
+ Отличие от constexpr: переменная инициализируется только во время compile-time, а не в runtime.
 */
 namespace CONST
 {
@@ -181,14 +180,14 @@ namespace SPAN
 }
 
 /*
- Сокращенный шаблон (auto или Concept auto) - шаблонная функция, которая содержит auto в качестве типа аргумента или возвращающегося значения
+ Сокращенный шаблон (auto или Concept auto) - шаблонная функция, которая содержит auto в качестве типа аргумента или возвращающегося значения.
  Плюсы:
  - упрощает синтаксис
  - не нужно писать template
- Минусы
+ Минусы:
  - если забыть сделать return в функции, то функция станет void
  - можно вернуть не тот тип
- Решение: использовать концепты для точного возвращения нужного типа
+ Решение: использовать концепты для точного возвращения нужного типа.
 */
 namespace AUTO
 {
@@ -246,7 +245,7 @@ namespace AUTO
     }
 }
 
-// Lambda можно передавать шаблоны только при аргументах
+// Lambda можно передавать шаблоны только в качестве аргументов
 namespace LAMBDA
 {
     template <typename T>
@@ -270,17 +269,51 @@ int main()
 {
     setlocale(LC_ALL, "Russian"); // Нужно сохранить файл с кодировкой Кириллица (Windows) - кодовая страница 1251
 #if defined(_MSC_VER) || defined(_MSC_FULL_VER) || defined(_WIN32) || defined(_WIN64)
-    /* Расширение файлов .cppm для модулей */
+    /* 
+     Модули (std::module): расширение файлов (.cppm) вместо (.cpp) - аналог прекомпилируемых заголовочных файлов (precompile headers). Для экспортирования модуля пишется (export module <name>). Из модулей можно экспортировать: декларации и определения, using-декларации, функции, глобальные переменные, классы, структуры, enum). Для импортирования модуля пишется (import module <name>). В отличие от #include, при импорте нужна точка с запятой.
+     Плюсы:
+     - не нужно использовать header/.h/.hpp файлы, поэтому уменьшает размер единиц трансляции (.cppm) при компиляции промежуточных объектных файлов (.o)/(.obj).
+     - быстрая компиляция, т.к. не нужно использовать препроцессор для предварительной обработки всего текста из include файла, а включается уже готовый предкомпилированный файл.
+     - решает проблему случайного нарушения ODR (One Definition Rule) - объявлений переменной/функции/класса/структуры может быть много в разных единицах трансляциях (.cpp), но определение должно быть только одно.
+     - отсекает попадание лишних зависимостей: при включении модуля в другой модуль можно пробрасывать, либо весь модуль, либо только его часть, например, std.string вместо всего std. Ранее нельзя было контролировать, что нужно экспортировать, а что — нет. При объявлении символа с внутренним связыванием (internal linkage) в заголовочном файле (.hpp), каждая единица трансляции (.cpp), включающая в себя этот файл, получала копию этого символа - это плохо, т.к. расход памяти для больших объектов может быть очень высок из-за копирования под каждую единицу трансляции.
+     - модули не влияют на друг друга.
+     Минусы:
+     - плохо параллелиться при комплияции: при header/.h/.hpp для каждого (.cpp) было удобнее компилировать параллельно, но модули компилируются все равно быстрее.
+     - каждый модуль компилируется отдельно в дополнительный файл BMI (binary module interface) и
+     (возможно) в объектный файл (.o)/(.obj). Файлы BMI дешевле компилировать, чем header/.h/.hpp файл для каждой единиц трансляции (.cpp).
+     - сложно сразу перейти от header к модулям.
+     */
     {
          hello();
     }
 #endif
     /*
+     Агрегатная инициализация - это инициализация с использованием (НЕпустых) фигурных скобок без использования конструктора при отсутствии НЕзакрытых членов класса/структуры в последовательном порядке, где можно при желании пропустить инициализацию последних членов класса/структуры для них используется нулевая инициализация. Агрегатная инициализация использует копирующую инициализацию для каждого элемента. В отличие от копируемой инициализации она НЕ может вызывать явные (explicit) конструкторы.
+     Назначенная инициализация (С++20) - это агрегатная инициализация с другим синтаксисом - можно не соблюдать порядок элементов.
+     */
+    {
+        struct Widget
+        {
+            int a;
+            int b;
+            int c;
+        };
+        
+        struct Thingy
+        {
+            Widget w;
+            int d;
+        };
+        
+        [[maybe_unused]] Widget widget {.a = 1, .c = 3};
+        [[maybe_unused]] Thingy thingy = {.w{.a = 1, .b = 2, .c = 3}, .d = 4};
+    }
+    /*
      constinit - статическая переменная, которая инициализируется только во время компиляции, не может быть объявлена внутри функции, но может изменяться.
      Отличие от static: переменная инициализируется только во время compile-time, а не в runtime.
-     Отличие от constexpr: Если переменная является ссылкой, то constinit == constexpr. При выходе из стека constexpr уничтожается, в отличии от статической constinit, const constinit != constexpr
+     Отличие от constexpr: Если переменная является ссылкой, то constinit == constexpr. При выходе из стека constexpr уничтожается, в отличии от статической constinit, const constinit != constexpr.
      consteval - функция, которые вычисляется только во время компиляции.
-     В отличие от constexpr: переменная инициализируется только во время compile-time, а не в runtime.
+     Отличие от constexpr: переменная инициализируется только во время compile-time, а не в runtime.
     */
     {
         using namespace CONST;
@@ -290,13 +323,13 @@ int main()
 
             // constexpr
             {
-                constexpr int sqrt1 = sqrt_1(100); // Функция будет вызвана при выполении кода (runtime)
+                [[maybe_unused]] constexpr int sqrt1 = sqrt_1(100); // Функция будет вызвана при выполении кода (runtime)
                 // constexpr int sqrt2 = sqrt_1(number); // Функция НЕ будет вызвана на этапе компиляции
-                int sqrt3 = sqrt_1(number); // Функция будет вызвана на этапе компиляции
+                [[maybe_unused]] int sqrt3 = sqrt_1(number); // Функция будет вызвана на этапе компиляции
             }
             // consteval
             {
-                constexpr int sqrt1 = sqrt_2(100); // Функция будет вызвана при выполении кода (runtime)
+                [[maybe_unused]] constexpr int sqrt1 = sqrt_2(100); // Функция будет вызвана при выполении кода (runtime)
                 // constexpr int sqrt2 = sqrt_2(number); // Функция НЕ будет вызвана на этапе компиляции
                 // int sqrt3 = sqrt_2(number); // Функция НЕ будет вызвана на этапе компиляции
             }
@@ -310,7 +343,7 @@ int main()
     /* Lambda */
     {
         using namespace LAMBDA;
-        // Lambda можно передавать шаблоны только при аргументах
+        // Lambda можно передавать шаблоны только в качестве аргументов
         {
             int number = 10;
             
@@ -341,7 +374,7 @@ int main()
                 return (... + args);
             };
             
-            auto sum = Sum(10, 11, 12);
+            [[maybe_unused]] auto sum = Sum(10, 11, 12);
             
             // Сокращенный шаблон (auto)
             auto Average = [&Sum](auto&&... args)
@@ -350,9 +383,8 @@ int main()
                 return s / sizeof...(args);
             };
             
-            auto average = Average(10, 11, 12);
+            [[maybe_unused]] auto average = Average(10, 11, 12);
         }
-
         // Lambda можно копировать и создать значение этого типа
         {
             using SQRT = decltype([](int x) 
@@ -363,17 +395,16 @@ int main()
             SQRT sqrt1; // Создание типа
             auto sqrt2 = sqrt1; // Копирование значение
 
-            auto result1 = sqrt1(1);
-            auto result2 = sqrt2(10);
+            [[maybe_unused]] auto result1 = sqrt1(1);
+            [[maybe_unused]] auto result2 = sqrt2(10);
         }
-        
         // Lambda в качестве параметра шаблона, могут быть constexpr с C++20 по-умолчанию
         {
             // Lambda без сосятояния: лямбда превращается в обычный указатель на функцию
             {
                 LAMBDA::Test<decltype([]()->void { })> test1;
-                decltype(test1.value) value; // unnamed class
-                LAMBDA::Test<decltype([]()->int { return 10; })> test2;
+                [[maybe_unused]] decltype(test1.value) value; // unnamed class
+                [[maybe_unused]] LAMBDA::Test<decltype([]()->int { return 10; })> test2;
             }
             // Lambda имеет состояние
             {
@@ -382,16 +413,83 @@ int main()
                     return value;
                 };
                 
-                LAMBDA::Test<decltype(lambda(std::string("str")))> test3; // string
-                LAMBDA::Test<decltype(lambda(10))> test4; // int
-                LAMBDA::Test<decltype(lambda(10.0))> test5; // double
+                [[maybe_unused]] LAMBDA::Test<decltype(lambda(std::string("str")))> test3; // string
+                [[maybe_unused]] LAMBDA::Test<decltype(lambda(10))> test4; // int
+                [[maybe_unused]] LAMBDA::Test<decltype(lambda(10.0))> test5; // double
             }
         }
     }
-    /* Новый синтаксис for + библиотека <ranges> */
+    /*
+     Библиотека ranges позволяет не использовать итераторы, а использовать сразу же контейнеры. Например, сортировка по возрастанию:
+     C++17: std::sort(numbers.begin(), numbers.end(), std::greater<>());
+     C++20: std::ranges::sort(numbers, std::ranges::greater());
+       Возможности:
+       - новый синтаксис инкрементирования через std::views::iota, который в 2 раза медленее, чем обычное инкрементирование, поэтому C++20 можно использовать с Time: O(1), где константа < 1.000.000 итераций. На хабре утвержается, что они равны по скорости.
+       - адаптеры (adapters), которые быстрее stl-функций: это достигается при помощи оптимизации компилятора - исключение вызовов функций благодаря шаблонам. При использовании нескольких адаптеров в цикле они комбинирются операцией | - pipe.
+         Виды:
+         - реверсивный проход по циклам (std::views::reverse).
+         - пропуск элементов в цикле (std::views::drop).
+         - фильтрация (std::views::filter) - проверка условие и возвращает bool(true - верно/false - неверно) значение.
+         - трансформация (std::view::transform) - преобразование данных из одного типа в другой.
+     */
     {
+        // ranges вместо iterators
+        {
+            std::vector numbers = { 4, 1, 7, 2, 3, 8 };
+            std::cout << "Числа: ";
+            for (const auto& number : numbers)
+                std::cout << number << ", ";
+
+            struct Number
+            {
+                int first = 0;
+                int secind = 0;
+            };
+
+            std::vector<Number> numbers_s = { {4,4}, {1,1}, {7,7}, {2,2}, {3,3}, {8,8} };
+
+            // 1 Способ: обычный
+            {
+                auto numbers_copy = numbers;
+                std::cout << std::endl << "1 Способ: обычный, отсортированные числа: ";
+                std::ranges::sort(numbers_copy, std::ranges::less());
+                for (const auto& number : numbers_copy)
+                    std::cout << number << ", ";
+                std::cout << std::endl;
+            }
+            // 2 Способ: вывод значений с помощью концепта std::input_range, который принимает только объекты диапазона ranges
+            {
+                auto Print = [](const std::ranges::input_range auto& numbers)
+                {
+                    for (const auto& number : numbers)
+                        std::cout << number << ", ";
+                    std::cout << std::endl;
+                };
+
+                auto numbers_copy = numbers;
+                std::cout << std::endl << "2 Способ: вывод значений с помощью концепта std::input_range, отсортированные числа: ";
+                std::ranges::sort(numbers_copy, std::ranges::less());
+                Print(numbers_copy);
+            }
+            // 3 Способ: обычная сортировка с помощью lambda до C++20
+            {
+                auto numbers_s_copy = numbers_s;
+                std::sort(numbers_s_copy.begin(), numbers_s_copy.end(), [](const Number& lhs, const Number& rhs)
+                {
+                    return lhs.first < rhs.first;
+                });
+            }
+            // 4 Способ: сортировка с помощью lambda C++20
+            {
+                auto numbers_s_copy = numbers_s;
+                std::ranges::sort(numbers_s_copy, std::less<>{}, [](const Number& number)
+                {
+                    return number.first;
+                });
+            }
+        }
         /*
-         Инкрементирование C++20 в 2 раза медленее, чем обычное инкрементирование, поэтому C++20 можно использовать с Time: O(1), где константа < 1.000.000 итераций.
+         Новый синтаксис for + библиотека <ranges>: инкрементирование C++20 в 2 раза медленее, чем обычное инкрементирование, поэтому C++20 можно использовать с Time: O(1), где константа < 1.000.000 итераций.
          На хабре утвержается, что они равны по скорости.
          */
         {
@@ -399,18 +497,18 @@ int main()
             {
                 for (const auto i : std::views::iota(0, 10))
                 {
-
+                    
                 }
             }
-            // 1 Способ: iota - Инкрементирование с n, которая заранее НЕ известна, Time: O(n).
+            // 2 Способ: iota - Инкрементирование с n, которая заранее НЕ известна, Time: O(n).
             {
                 constexpr int n = 1000000;
                 for (const auto i : std::views::iota(0, n)) // лучше использовать стандартный цикл, при n >= 1.000.000 итераций
                 {
-
+                    
                 }
             }
-            // 2 Способ: iota + take
+            // 3 Способ: iota + take
             for (int i : std::views::iota(0) | std::views::take(10))
             {
                 
@@ -419,12 +517,11 @@ int main()
         // Цикл по диапазону
         {
             std::vector<int> numbers = {1, 2, 3, 4, 5};
-            for (int i = 0; const auto & number: numbers) 
+            for (int i = 0; const auto & number: numbers)
             {
                 std::cout << (++i) << " " << number << std::endl;
             }
         }
-
         // Адаптеры, комбинирются операцией | - pipe
         {
             std::vector<int> numbers = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
@@ -456,13 +553,19 @@ int main()
             }
             /*
              Адаптеры: filter - фильтрует нечётные числа, transform - делит на два. Результат - контейнер с новыми числами.
-             На хабре утвержается, что filter + transform быстрее обычного transform в 1,5 раза.
+             На хабре утвержается, что filter + transform быстрее обычного transform в 1,5 раза - это достигается при помощи оптимизации компилятора - исключение вызовов функций благодаря шаблонам.
              */
             {
                 // 1 Способ
                 {
-                    auto condition = [](int i) { return i % 2 == 0; }; // Условие
-                    auto operation = [](int i) { return i / 2; }; // Действие
+                    auto condition = [](int i)
+                    {
+                        return i % 2 == 0; // Условие, отладчик зайдет сюда
+                    };
+                    auto operation = [](int i)
+                    {
+                        return i / 2; // Действие, отладчик зайдет сюда
+                    };
 
                     auto numbers_out = numbers | std::views::filter(condition) | std::views::transform(operation); // При выполнении условия четного числа, выполняется действие - деление
                     std::cout << "1 Способ, четные числа, деленые на 2" << std::endl;
@@ -470,7 +573,6 @@ int main()
                         std::cout << i << ", ";
                     std::cout << std::endl;
                 }
-
                 // 2 Способ
                 {
                     std::cout << "2 Способ, четные числа, деленые на 2" << std::endl;
@@ -482,7 +584,7 @@ int main()
             // Адаптеры: drop - отбрасывает элементы, а take - ограничивает количество элементов
             {
                 std::cout << "Элементы с 5 по 14: " << std::endl;
-                for (const auto& number : numbers | std::views::drop(5) | std::views::take(10)) 
+                for (const auto& number : numbers | std::views::drop(5) | std::views::take(10))
                     std::cout << number << ", ";
                 std::cout << std::endl;
             }
@@ -569,62 +671,6 @@ int main()
                 // TODO: написать свой адаптер
             }
         }
-        
-        // Библиотека ranges позволяет не использовать итераторы, а сразу же контейнеры. Например, сортировка по возрастанию
-        {
-            std::vector numbers = { 4, 1, 7, 2, 3, 8 };
-            std::cout << "Числа: ";
-            for (const auto& number : numbers)
-                std::cout << number << ", ";
-
-            struct Number 
-            {
-                int first = 0;
-                int secind = 0;
-            };
-
-            std::vector<Number> numbers_s = { {4,4}, {1,1}, {7,7}, {2,2}, {3,3}, {8,8} };
-
-            // 1 Способ: обычный
-            {
-                auto numbers_copy = numbers;
-                std::cout << std::endl << "1 Способ: обычный, отсортированные числа: ";
-                std::ranges::sort(numbers_copy, std::ranges::less());
-                for (const auto& number : numbers_copy)
-                    std::cout << number << ", ";
-                std::cout << std::endl;
-            }
-            // 2 Способ: вывод значений с помощью концепта std::input_range, который принимает только объекты диапазона ranges
-            {
-                auto Print = [](const std::ranges::input_range auto& numbers)
-                {
-                    for (const auto& number : numbers)
-                        std::cout << number << ", ";
-                    std::cout << std::endl;
-                };
-
-                auto numbers_copy = numbers;
-                std::cout << std::endl << "2 Способ: вывод значений с помощью концепта std::input_range, отсортированные числа: ";
-                std::ranges::sort(numbers_copy, std::ranges::less());
-                Print(numbers_copy);
-            }
-            // 2 Способ: обычная сортировка с помощью lambda до C++20
-            {
-                auto numbers_s_copy = numbers_s;
-                std::sort(numbers_s_copy.begin(), numbers_s_copy.end(), [](const Number& lhs, const Number& rhs)
-                {
-                    return lhs.first < rhs.first;
-                });
-            }
-            // 2 Способ: сортировка с помощью lambda C++20
-            {
-                auto numbers_s_copy = numbers_s;
-                std::ranges::sort(numbers_s_copy, std::less<>{}, [](const Number& number)
-                {
-                    return number.first;
-                });
-            }
-        }
     }
     /* Новая конструкция using enum - делает видимыми все константы из enum */
     {
@@ -641,23 +687,23 @@ int main()
         // standard provides 15d as option for std::chrono::day(15)
 
         constexpr auto year_month = std::chrono::year(2021) / 8;
-        auto is_year_month = (year_month == std::chrono::year_month(std::chrono::year(2021), std::chrono::August));
+        [[maybe_unused]] auto is_year_month = (year_month == std::chrono::year_month(std::chrono::year(2021), std::chrono::August));
 
         constexpr auto month_day = 9 / std::chrono::day(15) ;
-        auto is_month_day = (month_day == std::chrono::month_day(std::chrono::September, std::chrono::day(15)));
+        [[maybe_unused]] auto is_month_day = (month_day == std::chrono::month_day(std::chrono::September, std::chrono::day(15)));
 
         constexpr auto month_day_last = std::chrono::October / std::chrono::last;
-        auto is_month_day_last = (month_day_last == std::chrono::month_day_last(std::chrono::month(10)));
+        [[maybe_unused]] auto is_month_day_last = (month_day_last == std::chrono::month_day_last(std::chrono::month(10)));
 
         constexpr auto month_weekday = 11 / std::chrono::Monday[3];
-        auto is_month_wkday = (month_weekday == std::chrono::month_weekday(std::chrono::November, std::chrono::Monday[3]));
+        [[maybe_unused]] auto is_month_wkday = (month_weekday == std::chrono::month_weekday(std::chrono::November, std::chrono::Monday[3]));
 
         constexpr auto month_weekday_last = std::chrono::December / std::chrono::Sunday[std::chrono::last];
-        auto is_month_weekday_last = (month_weekday_last == std::chrono::month_weekday_last(std::chrono::month(12), std::chrono::weekday_last(std::chrono::Sunday)));
+        [[maybe_unused]] auto is_month_weekday_last = (month_weekday_last == std::chrono::month_weekday_last(std::chrono::month(12), std::chrono::weekday_last(std::chrono::Sunday)));
 
         constexpr auto year_2021 = std::chrono::year(2021) / std::chrono::January / std::chrono::day(23);
         using namespace std::chrono;
-        auto is_year_2021 = (year_2021 == std::chrono::year_month_day(2021y, std::chrono::month(std::chrono::January), 23d));
+        [[maybe_unused]] auto is_year_2021 = (year_2021 == std::chrono::year_month_day(2021y, std::chrono::month(std::chrono::January), 23d));
     }
 #if defined(_MSC_VER) || defined(_MSC_FULL_VER) || defined(_WIN32) || defined(_WIN64)
     /* Библиотека format */
@@ -691,21 +737,21 @@ int main()
         int number1_int = 5, number2_int = 10;
         double number1_double = 5, number2_double = 10;
         std::vector<int> numbers = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-        auto midpoint_int = std::midpoint(number1_int, number2_int); // возвращает int
-        auto midpoint_double = std::midpoint(number1_double, number2_double); // возвращает double
+        [[maybe_unused]] auto midpoint_int = std::midpoint(number1_int, number2_int); // возвращает int
+        [[maybe_unused]] auto midpoint_double = std::midpoint(number1_double, number2_double); // возвращает double
     }
     /* in_range - проверяет возможность представить значение числа другим типом */
     {
-        auto is_in_range1 = std::in_range<std::size_t>(-1); // false, отрицательные числа не представимы в size_t
-        auto is_in_range2 = std::in_range<std::size_t>(42); // true
+        [[maybe_unused]] auto is_in_range1 = std::in_range<std::size_t>(-1); // false, отрицательные числа не представимы в size_t
+        [[maybe_unused]] auto is_in_range2 = std::in_range<std::size_t>(42); // true
     }
     /* Модификации для std::string */
     {
         std::string str = "string";
-        auto is_start = str.starts_with("str"); // проверка суффиксов, поиск сначала
-        auto is_end = str.ends_with("ing"); // проверка постфиксов, поиск с конца
-        auto size_int  = std::ssize(str); // возвращает int64_t, for(int i = 0; i < std::ssize(container.ssize()); ++i)
-        auto size_size_t  = str.size(); // возвращает uint64_t, for(int i = 0; i < (int)container.size(); ++i)
+        [[maybe_unused]] auto is_start = str.starts_with("str"); // проверка суффиксов, поиск сначала
+        [[maybe_unused]] auto is_end = str.ends_with("ing"); // проверка постфиксов, поиск с конца
+        [[maybe_unused]] auto size_int  = std::ssize(str); // возвращает int64_t, for(int i = 0; i < std::ssize(container.ssize()); ++i)
+        [[maybe_unused]] auto size_size_t  = str.size(); // возвращает uint64_t, for(int i = 0; i < (int)container.size(); ++i)
     }
     /* Модификации для контейнеров std::unordered_map и std::unordered_set */
     {
@@ -721,7 +767,7 @@ int main()
             {{"Java", "Java SE 9"}, 2017}
         };
 
-        auto is_contain = nodeMap.contains({ "C++", "C++14" }); // contains - проверяет наличие ключа, аналог метода count
+        [[maybe_unused]] auto is_contain = nodeMap.contains({ "C++", "C++14" }); // contains - проверяет наличие ключа, аналог метода count
     }
     /*
      std::span - обертка для контейнеров и массивов, только для std::vector<T>, и std::array<T> и обычных массивов. std::span - является ссылочным типом (не владеет объектом), поэтому память не выделяет и не освобождает.
@@ -749,13 +795,13 @@ int main()
             };
 
             int numbers_mas[]{ 1, 2, 3, 4, 5 };
-            auto max_mas = max(std::span(numbers_mas));
+            [[maybe_unused]] auto max_mas = max(std::span(numbers_mas));
 
             std::vector<int> numbers_vec = { 1, 2, 3, 4, 5 };
-            auto max_vec = max(std::span(numbers_vec));
+            [[maybe_unused]] auto max_vec = max(std::span(numbers_vec));
 
             std::array<int, 5> numbers_array = { 1, 2, 3, 4, 5 };
-            auto max_array = max(std::span(numbers_array));
+            [[maybe_unused]] auto max_array = max(std::span(numbers_array));
 
             /*
               Для std::list не сработает
@@ -763,7 +809,6 @@ int main()
               auto max_list = max(std::span(numbers_list));
             */
         }
-
         // Для любых типов std::is_arithmetic
         {
             auto max = []<class T, std::size_t N>(const std::span<T, N>& values)->T // N - нужен размер для обычного массива, иначе ошибка!!!
@@ -779,13 +824,13 @@ int main()
             };
 
             int numbers_mas[]{ 1, 2, 3, 4, 5 };
-            auto max_mas = max(std::span(numbers_mas));
+            [[maybe_unused]] auto max_mas = max(std::span(numbers_mas));
 
             std::vector<double> numbers_vec = { 1, 2, 3, 4, 5 };
-            auto max_vec = max(std::span(numbers_vec));
+            [[maybe_unused]] auto max_vec = max(std::span(numbers_vec));
 
             std::array<float, 5> numbers_array = { 1, 2, 3, 4, 5 };
-            auto max_array = max(std::span(numbers_array));
+            [[maybe_unused]] auto max_array = max(std::span(numbers_array));
 
             /*
               Для std::list не сработает
@@ -793,7 +838,6 @@ int main()
               auto max_list = max(std::span(numbers_list));
             */
         }
-
         // Для типа const нужно отдельную использовать форму std::span<const T>
         {
             auto max = []<class T, std::size_t N>(const std::span<const T, N>& values)->T // N - нужен размер для обычного массива, иначе ошибка!!!
@@ -809,13 +853,13 @@ int main()
             };
 
             const int numbers_mas[]{ 1, 2, 3, 4, 5 };
-            auto max_mas = max(std::span(numbers_mas));
+            [[maybe_unused]] auto max_mas = max(std::span(numbers_mas));
 
             const std::vector<double> numbers_vec = { 1, 2, 3, 4, 5 };
-            auto max_vec = max(std::span(numbers_vec));
+            [[maybe_unused]] auto max_vec = max(std::span(numbers_vec));
 
             const std::array<float, 5> numbers_array = { 1, 2, 3, 4, 5 };
-            auto max_array = max(std::span(numbers_array));
+            [[maybe_unused]] auto max_array = max(std::span(numbers_array));
 
             /*
               Для std::list не сработает
@@ -823,7 +867,6 @@ int main()
               auto max_list = max(std::span(numbers_list));
             */
         }
-
         // Проверка на эквивалентность контейнера и массива
         {
             using namespace SPAN;
@@ -837,24 +880,24 @@ int main()
             AUTO::PrintContainer(subspan1);
             AUTO::PrintContainer(subspan2);
 
-            auto is_equal = EqualSpan(subspan1, subspan2);
+            [[maybe_unused]] auto is_equal = EqualSpan(subspan1, subspan2);
         }
     }
     /*
-     Сокращенный шаблон (auto или Concept auto) - шаблонная функция, которая содержит auto в качестве типа аргумента или возвращающегося значения
+     Сокращенный шаблон (auto или Concept auto) - шаблонная функция, которая содержит auto в качестве типа аргумента или возвращающегося значения.
      Плюсы:
      - упрощает синтаксис
      - не нужно писать template
-     Минусы
+     Минусы:
      - если забыть сделать return в функции, то функция станет void
      - можно вернуть не тот тип
      Решение: использовать концепты для точного возвращения нужного типа
     */
     {
-        auto sum1 = AUTO::GetSum(1, 2);
-        auto sum2 = AUTO::GetSum(1, 2.f);
-        auto sum3 = AUTO::Sum(1, 2);
-        auto sum4 = AUTO::Sum(1, 2.f);
+        [[maybe_unused]] auto sum1 = AUTO::GetSum(1, 2);
+        [[maybe_unused]] auto sum2 = AUTO::GetSum(1, 2.f);
+        [[maybe_unused]] auto sum3 = AUTO::Sum(1, 2);
+        [[maybe_unused]] auto sum4 = AUTO::Sum(1, 2.f);
 
         // Concept
         {
@@ -866,8 +909,8 @@ int main()
             
             // auto resultReturn = CONCEPT::AUTO::NothingReturn(); // Ошибка NothingReturn ничего не возвращает
             CONCEPT::AUTO::DrawShape(point);
-            auto shape1 = CONCEPT::AUTO::GetShape1(); // C++20, 1 Способ: точно возвращается значение и нужный тип
-            auto shape2 = CONCEPT::AUTO::GetShape2(); // C++20, 2 Способ: точно возвращается значение и нужный тип
+            [[maybe_unused]] auto shape1 = CONCEPT::AUTO::GetShape1(); // C++20, 1 Способ: точно возвращается значение и нужный тип
+            [[maybe_unused]] auto shape2 = CONCEPT::AUTO::GetShape2(); // C++20, 2 Способ: точно возвращается значение и нужный тип
         }
     }
     /* Бибилиотека <bit> */
@@ -875,23 +918,22 @@ int main()
         // std::bit_cast - перевод из одного типа в другой, замена reinterpret_cast
         {
             float number_float = 1.2f;
-            int number_int = std::bit_cast<int>(number_float);
+            [[maybe_unused]] int number_int = std::bit_cast<int>(number_float);
         }
         // std::bit_width - двоичный логарифм
         {
-            auto result = std::bit_width(16u); // 5, log2(x) = 16
+            [[maybe_unused]] auto result = std::bit_width(16u); // 5, log2(x) = 16
         }
         // std::popcount - кол-во битов в числе в двоичной системе
         {
-            auto result = std::popcount(10u); // 1010 = 2
+            [[maybe_unused]] auto result = std::popcount(10u); // 1010 = 2
         }
         // std::has_single_bit - наличие только 1 бита в числе в двоичной системе
         {
-            auto del = 1u;
-            auto result1 = std::has_single_bit(1u); // true, 1 = 1
-            auto result2 = std::has_single_bit(2u); // true, 10 = 1
-            auto result3 = std::has_single_bit(3u); // false, 101 = 2
-            auto result4 = std::has_single_bit(10u); // false, 1010 = 2
+            [[maybe_unused]] auto result1 = std::has_single_bit(1u); // true, 1 = 1
+            [[maybe_unused]] auto result2 = std::has_single_bit(2u); // true, 10 = 1
+            [[maybe_unused]] auto result3 = std::has_single_bit(3u); // false, 101 = 2
+            [[maybe_unused]] auto result4 = std::has_single_bit(10u); // false, 1010 = 2
         }
         // std::countl_zero - подсчитывать число последовательных битов, равное нулю, начиная с самого значительного бита
         {
@@ -926,15 +968,19 @@ int main()
             // TODO: разобраться
         }
     }
-    /* std::assume_aligned - возвращает указатель, про который компилятор будет считать, что он выровнен : его значение кратно числу, которое мы указали в качестве шаблона у аргумента */
+    /* 
+     std::assume_aligned - возвращает указатель, про который компилятор будет считать, что он выровнен : его значение кратно числу, которое мы указали в качестве шаблона у аргумента
+     */
     {
         // TODO: разобраться
 
         int number = 10;
         int *point = &number;
-        int* p = std::assume_aligned<256>(point);
+        [[maybe_unused]] int* p = std::assume_aligned<256>(point);
     }
-    /* std::endian - определяет, какая система записи чисел используется при компиляции: Little endian или Big endian */
+    /* 
+     std::endian - определяет, какая система записи чисел используется при компиляции: Little endian или Big endian
+     */
     {
         // TODO: разобраться
         if constexpr (std::endian::native == std::endian::big)
@@ -944,7 +990,12 @@ int main()
         else
             std::cout << "mixed-endian" << std::endl;
     }
-    /* Функция трехстороннего сравнения (std::compare_three_way) */
+    /* 
+     Оператор трехстороннего сравнения (spaceship) (<=> / std::compare_three_way) - является неявным constexpr-оператором сравнения, который можно в классе/структуре задать вручную или компилятор сам сгенерирует по умолчанию, указав ключевое слово default. В итоге компилятор генерирует код для шести вариантов сравнения (<,>,<=,>=,==,!=). Для обычных типов (int, double, float) оператор трехстороннего сравнения также будет работать, он будет вызываться всякий раз, когда значения сравниваются с использованием одного из шести операторов сравнения или <=> и с помощью разрешения перегрузки выбирается нужное сравнение.
+         Пример:
+         1) a <=> b
+         2) std::compare_three_way{}(a, b)
+     */
     {
         using namespace compare_three_way;
         
@@ -952,15 +1003,25 @@ int main()
         std::set<Point> points;
         points.insert(point1);
 
-        std::cout << std::boolalpha << "point1 == point2 - " << (point1 == point2) << std::endl  // false
-                                    << "point1 != point2 - " << (point1 != point2) << std::endl  // true
-                                    << "point1 < point2 - " << (point1 < point2) << std::endl  // true
-                                    << "point1 <= point2 - " << (point1 <= point2) << std::endl  // true
-                                    << "point1 > point2 - " << (point1 > point2) << std::endl  // false
-                                    << "point1 >= point2 - " << (point1 >= point2) << std::endl; // false
+        std::cout << "Обычное сравнение" << std::endl;
+        std::cout << std::boolalpha << "point1 == point2 - " << (point1 == point2) << std::endl // false
+                                    << "point1 != point2 - " << (point1 != point2) << std::endl // true
+                                    << "point1 < point2 - " << (point1 < point2) << std::endl   // false, перегружен оператор меньше
+                                    << "point1 <= point2 - " << (point1 <= point2) << std::endl // true
+                                    << "point1 > point2 - " << (point1 > point2) << std::endl   // false
+                                    << "point1 >= point2 - " << (point1 >= point2) << std::endl // false
+                                    << std::endl;
 
-        auto compar1 = point1 <=> point2;
-        auto compare2 = std::compare_three_way{}(point1, point2);
+        [[maybe_unused]] auto compare1 = point1 <=> point2;
+        [[maybe_unused]] auto compare2 = std::compare_three_way{}(point1, point2);
+        
+        std::cout << std::boolalpha << "point1 == point2 - " << (compare1 == 0) << std::endl // false, point1 == point2
+                                    << "point1 != point2 - " << (compare1 != 0) << std::endl // true, point1 != point2
+                                    << "point1 < point2 - " << (compare1 < 0) << std::endl   // true, point1 < point2
+                                    << "point1 <= point2 - " << (compare1 <= 0) << std::endl // true, point1 <= point2
+                                    << "point1 > point2 - " << (compare1 > 0) << std::endl   // false, point1 > point2
+                                    << "point1 >= point2 - " << (compare1 >= 0) << std::endl // false, point1 => point2
+                                    << std::endl;
     }
 #if defined(_MSC_VER) || defined(_MSC_FULL_VER) || defined(_WIN32) || defined(_WIN64)
     /* Нововведения в многопоточности */
@@ -1051,7 +1112,7 @@ int main()
         }
     }
 #endif
-    /* std::source_location - представляет определенную информацию об исходном коде
+    /* std::source_location - представляет определенную информацию об исходном коде.
     * Методы:
     * current() - объект, который указывает исходное местоположение, где он вызывается в программе
     * file_name() - имя файла
@@ -1139,20 +1200,22 @@ int main()
             common::variadic::Print_Numeric((int)1, (double)2.0, (float)3.0);
             // auto abs3 = common::abs((float)1.0); // Ошибка: не указан тип float
             
-            auto allArithmetic1 = common::variadic::Has_All_Arithmetic(5, true, 5.5, false); // false
-            auto allArithmetic2 = common::variadic::Has_All_Arithmetic(5, 5.5); // true
-            auto anyArithmetic1 = common::variadic::Has_Any_Arithmetic(5, true, 5.5, false); // true
-            auto anyArithmetic2 = common::variadic::Has_Any_Arithmetic(true, false); // true
-            auto noneArithmetic1 = common::variadic::Has_None_Arithmetic(5, true, 5.5, false); // false
-            auto noneArithmetic2 = common::variadic::Has_None_Arithmetic(5, 5.5); // false
-            auto noneArithmetic3 = common::variadic::Has_None_Arithmetic(true, false); // false
+            [[maybe_unused]] auto allArithmetic1 = common::variadic::Has_All_Arithmetic(5, true, 5.5, false); // false
+            [[maybe_unused]] auto allArithmetic2 = common::variadic::Has_All_Arithmetic(5, 5.5); // true
+            [[maybe_unused]] auto anyArithmetic1 = common::variadic::Has_Any_Arithmetic(5, true, 5.5, false); // true
+            [[maybe_unused]] auto anyArithmetic2 = common::variadic::Has_Any_Arithmetic(true, false); // true
+            [[maybe_unused]] auto noneArithmetic1 = common::variadic::Has_None_Arithmetic(5, true, 5.5, false); // false
+            [[maybe_unused]] auto noneArithmetic2 = common::variadic::Has_None_Arithmetic(5, 5.5); // false
+            [[maybe_unused]] auto noneArithmetic3 = common::variadic::Has_None_Arithmetic(true, false); // false
+            
+            [[maybe_unused]] auto foundPoint = common::lambda::FindSubPoint(points, Point{ 0, 0 }, Point{ 2, 1 }); // Point{ 2, 1 }
         }
         // custom
         {
-            auto operation1 = custom::details::Operation<int>;  // true
-            auto operation2 = custom::details::Operation<char>; // true
-            auto operation3 = custom::details::Operation<std::string>; // false
-            auto operation4 = custom::details::Operation<Point>; // false
+            [[maybe_unused]] auto operation1 = custom::details::Operation<int>;  // true
+            [[maybe_unused]] auto operation2 = custom::details::Operation<char>; // true
+            [[maybe_unused]] auto operation3 = custom::details::Operation<std::string>; // false
+            [[maybe_unused]] auto operation4 = custom::details::Operation<Point>; // false
             
             custom::Sort(points.begin(), points.end());
             custom::Print(points);
@@ -1171,14 +1234,14 @@ int main()
         {
             // auto resultReturn = CONCEPT::AUTO::NothingReturn(); // Ошибка NothingReturn ничего не возвращает
             CONCEPT::AUTO::DrawShape(point);
-            auto shape1 = CONCEPT::AUTO::GetShape1();
-            auto shape2 = CONCEPT::AUTO::GetShape2();
+            [[maybe_unused]] auto shape1 = CONCEPT::AUTO::GetShape1();
+            [[maybe_unused]] auto shape2 = CONCEPT::AUTO::GetShape2();
             
-            auto abs1 = CONCEPT::AUTO::ABS((int)1);
-            auto abs2 = CONCEPT::AUTO::ABS((double)1.0);
+            [[maybe_unused]] auto abs1 = CONCEPT::AUTO::ABS((int)1);
+            [[maybe_unused]] auto abs2 = CONCEPT::AUTO::ABS((double)1.0);
             
-            auto size1 = CONCEPT::AUTO::GetSize(points);
-            auto size2 = CONCEPT::AUTO::GetSize(1.0);
+            [[maybe_unused]] auto size1 = CONCEPT::AUTO::GetSize(points);
+            [[maybe_unused]] auto size2 = CONCEPT::AUTO::GetSize(1.0);
             
             CONCEPT::AUTO::Print(1.1);
             
@@ -1193,6 +1256,41 @@ int main()
             std::cout<< metafunction::Info<decltype(pointsList)>::type << std::endl;
             std::cout<< metafunction::Info<decltype(point)>::type << std::endl;
         }
+    }
+    /*
+     Семафор (semaphore) - механизм синхронизации работы потоков, который может управлять доступом к общему ресурсу. В основе семафора лежит счётчик, над которым можно производить две атомарные операции: увеличение и уменьшение кол-во потоков на единицу, при этом операция уменьшения для нулевого значения счётчика является блокирующей. Служит для более сложных механизмов синхронизации параллельно работающих задач. В качестве шаблонного параметра  указывается максимальное допустимое кол-во потоков. В конструкторе инициализируется счетчик - текущее допустимое кол-во потоков.
+     */
+    {
+        semaphore::start();
+    }
+    /*
+     Барьер - механизм синхронизации работы потоков, который может управлять доступом к общему ресурсу и позволяет блокировать любое количество потоков до тех пор, пока ожидаемое количество потоков не достигнет барьера.
+     Защелки нельзя использовать повторно, барьеры можно использовать повторно.
+     
+     Виды:
+     1. Защелка (std::latch) - механизм синхронизации работы потоков, который может управлять доступом к общему ресурсу. В основе лежит уменьшающийся счетчик, значение счетчика инициализируется при создании. Потоки уменьшают значение счётчика и блокируются на защёлке до тех пор, пока счетчик не уменьшится до нуля. Нет возможности увеличить или сбросить счетчик, что делает защелку одноразовым барьером.
+     2. Барьер (std::barrier) - механизм синхронизации работы потоков, который может управлять доступом к общему ресурсу. В основе лежит уменьшающийся счетчик, значение счетчика инициализируется при создании. Барьер блокирует потоки до тех пор, пока все потоки не уменьшат значение счётчика до нуля, как только ожидающие потоки разблокируются, значение счётчика устанавливается в начальное состояние и барьер может быть использован повторно.
+     
+     Отличия std::latch от std::barrier:
+     - std::latch может быть уменьшен одним потоком более одного раза.
+     - std::latch - можно использовать один раз, std::barrier является многоразовым: как только ожидающие потоки разблокируются, значение счётчика устанавливается в начальное состояние и барьер может быть использован повторно.
+     */
+    {
+        Latch_Barrier::Start();
+    }
+    /*
+     Корутина (coroutine) - механизм асинхронной работы потоков, функция с несколькими точками входа и выхода, из нее можно выйти середине, а затем вернуться в нее и продолжить исполнение. По сути это объект, который может останавливаться и возобновляться. C++20: stackless, userserver (yandex): stackfull.
+      Gример — программы, выполняющие много операций ввода-вывода. Типичный пример — веб-сервер. Он вынужден общаться со многими клиентами одновременно, но при этом больше всего он занимается одним — ожиданием. Пока данные будут переданы по сети или получены, он ждёт. Если мы реализуем веб-сервер традиционным образом, то в нём на каждого клиента будет отдельный поток. В нагруженных серверах это будет означать тысячи потоков. Ладно бы все эти потоки занимались делом, но они по большей части приостанавливаются и ждут, нагружая операционную систему по самые помидоры переключением контекстов.
+     Характериситки:
+     - stackfull - держат свой стек в памяти на протяжении всего времени жизни корутины.
+     - stackless - не сохраняет свой стек в памяти на протяжении всего времени жизни корутины, а только во время непосредственной работы. При этом стек аллоцируется в вызывающем корутину контексте.
+     Методы:
+     - co_await — для прерывания функции и последующего продолжения.
+     - co_yield — для прерывания функции с одновременным возвратом результата. Это синтаксический сахар для конструкции с co_await.
+     - co_return — для завершения работы функции.
+     */
+    {
+        coroutine::start();
     }
 
     return 0;

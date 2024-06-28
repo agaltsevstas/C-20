@@ -1,8 +1,9 @@
 #ifndef Concept_h
 #define Concept_h
 
-#include <iostream>
 #include <algorithm>
+#include <iostream>
+#include <vector>
 
 /*
  Сайты:
@@ -211,6 +212,21 @@ namespace CONCEPT
                 return !(... || args);
             }
         }
+    
+        namespace lambda
+        {
+            template <typename VectorPoints, typename ...TPoints>
+            requires std::is_same_v<VectorPoints, std::vector<Point>> && ((std::is_same_v<TPoints, Point>) && ...)
+            Point FindSubPoint(const VectorPoints& points, TPoints&& ...subs)
+            {
+                auto contains_subpoints = [&subs...](const Point& point)
+                {
+                    return ((point == subs) || ...);
+                };
+                
+                return *std::find_if(points.begin(), points.end(), contains_subpoints);
+            }
+        }
     }
 
     namespace custom
@@ -319,7 +335,7 @@ namespace CONCEPT
         details::Shape auto GetShape1()
         {
             Point point;
-            DerivedPoint derivedPoint;
+            [[maybe_unused]] DerivedPoint derivedPoint;
             NoDerivedPoint noDerivedPoint;
             
             return point;
@@ -331,7 +347,7 @@ namespace CONCEPT
         auto GetShape2() -> details::Shape auto
         {
             Point point;
-            DerivedPoint derivedPoint;
+            [[maybe_unused]] DerivedPoint derivedPoint;
             NoDerivedPoint noDerivedPoint;
             
             return point;
